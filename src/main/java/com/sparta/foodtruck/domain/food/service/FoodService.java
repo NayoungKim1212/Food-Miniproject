@@ -51,6 +51,7 @@ public class FoodService {
         newFood = foodRepository.save(newFood);
 
         FoodValue newFoodValue = new FoodValue(newFood, requestDto.getSalty(), requestDto.getHot(), requestDto.getSpicy(), FoodValue.FoodWorldValue.findByNumber(requestDto.getWorld()));
+        // FoodValue.FoodWorldValue.findByNumber(requestDto.getWorld()) : FoodValue의 FoodWorldValue enum에서 findByNumber 메서드 호출, requestDto 객체에서 가져온 getWorld() 값에 해당하는 FoodWorldValue를 찾아 반환
         foodValueRepository.save(newFoodValue);
 
         return ResponseEntity.ok(new CustomStatusResponseDto(true));
@@ -61,13 +62,13 @@ public class FoodService {
         List<Long> findFood;
         if (requestDto.getWorld() == 0) {
             findFood = queryFactory
-                    .select(foodValue.id)
-                    .from(foodValue)
-                    .where(foodValue.salty.eq(requestDto.isSalty()),
+                    .select(foodValue.id) // foodValue 테이블에서 id 필드 값 조회
+                    .from(foodValue) // foodValue Entity 테이블에서
+                    .where(foodValue.salty.eq(requestDto.isSalty()), // foodValue의 salty가 requestDto의 salty와 동일한가
                             foodValue.maxSpicy.goe(requestDto.getSpicy()),
                             foodValue.minSpicy.loe(requestDto.getSpicy()),
                             foodValue.hot.eq(requestDto.isHot()))
-                    .fetch();
+                    .fetch(); // 쿼리를 실행하고 결과륿 반환하는데 음식 ID의 리스트를 가져와 findFood에 저장
         } else {
             findFood = queryFactory
                     .select(foodValue.id)
@@ -80,24 +81,28 @@ public class FoodService {
                     .fetch();
         }
 
-        Collections.shuffle(findFood);
+        Collections.shuffle(findFood); // findFood 리스트의 순서를 무작위로 섞음
         while (findFood.size() < 4) {
             Long Index = randomIndex();
             if (!findFood.contains(Index)) {
                 findFood.add(Index);
             }
         }
-        findFood = findFood.subList(0, 4);
-
+        findFood = findFood.subList(0, 4); // findFood 리스트에서 처음부터 4개의 요소를 추출해 새로운 리스트 생성
+                                            // ==> 4개의 음식 ID만 유지
         return ResponseEntity.ok(getResult(findFood).stream().map(FoodResponseDto::new).toList());
     }
 
     private Long randomIndex() {
-        return (long) (Math.random() * (MAX_FOOD + 1));
+        return (long) (Math.random() * (MAX_FOOD + 1)); // 0부터 MAX_FOOD 이하
     }
 
     private List<Food> getResult(List<Long> num) {
-        List<Food> resultFood = queryFactory.select(foodValue.food).from(foodValue).where(foodValue.id.in(num)).fetch();
+        List<Food> resultFood = queryFactory
+                .select(foodValue.food)
+                .from(foodValue)
+                .where(foodValue.id.in(num)) // in(): 주어진 리스트 안에 해당 필드 값이 포함되는지 비교하는 조건 생성
+                .fetch();
         Collections.shuffle(resultFood);
         return resultFood;
     }
@@ -122,8 +127,16 @@ public class FoodService {
 
     @Transactional
     public CustomStatusResponseDto choiceFood(Long foodId) {
-        Long sel = queryFactory.select(food.selectBy).from(food).where(food.id.eq(foodId)).fetchOne();
-        queryFactory.update(food).set(food.selectBy, ++sel).where(food.id.eq(foodId)).execute();
+        Long sel = queryFactory
+                .select(food.selectBy) // food의 selectBy 필드 조회
+                .from(food) // food 테이블에서
+                .where(food.id.eq(foodId)) // food 테이블의 id 필드 값이 foodId와 동일한
+                .fetchOne(); // 단일 결과를 가져옴
+        queryFactory
+                .update(food) // food 테이블을 업데이트(업데이트 대상 테이블)
+                .set(food.selectBy, ++sel) // food 테이블의 selectBy 필드를 업그레이드, sel 변수 값을 1증가시킨 후 할당
+                .where(food.id.eq(foodId)) // food 테이블의 id 필드가 foodId와 동일하면
+                .execute(); // 설정된 조건에 따라 업데이트 쿼리 실행
         return new CustomStatusResponseDto(true);
     }
 
@@ -145,7 +158,8 @@ public class FoodService {
                 foodLikeRepository.delete(foodLike); // 좋아요 삭제
         }
         return (long) queryFactory.selectFrom(foodLike).where(foodLike.food.id.eq(foodId)).fetch().size();
-    }
+    }   // foodLike 테이블 조회 -> foodLike 테이블의 food 필드 id 값이 foodId와 일치하는 레코드 선택하는 조건
+        // -> 리스트로 반환 -> 리스트의 크기 반환(음식 ID에 해당하는 foodLike 테이블의 레코드 개수)
 
 
     public ResponseEntity<List<CommentResponseDto>> addComment(Long foodId, UserDetailsImpl userDetails, CommentRequestDto requestDto) {
@@ -187,7 +201,7 @@ public class FoodService {
     }
 
     public ResponseEntity<CommentListResponseDto> getCommentByFood(Long foodId, UserDetailsImpl userDetails) {
-        List<CommentResponseDto> foodCommentList = getCommentByFood(foodId);
+        List<CommentResponseDto> foodCommentList = getCommentByFood(foodId); // foodId에 해당하는 음식의 코멘트
         CommentListResponseDto responseDto = new CommentListResponseDto();
         responseDto.setData(foodCommentList);
         if (userDetails != null) {
@@ -200,7 +214,7 @@ public class FoodService {
 
     @Transactional
     public List<CommentResponseDto> patchCommentByFood(Long foodId, UserDetailsImpl userDetails, Long commentId, CommentRequestDebugDto requestDto) {
-        checkComment(foodId, commentId, userDetails);
+        checkComment(foodId, commentId, userDetails); // 유효한 코멘트인지 확인
         queryFactory.update(foodComment).set(foodComment.content, requestDto.getContent()).where(foodComment.id.eq(commentId)).execute();
 
         return getCommentByFood(foodId);

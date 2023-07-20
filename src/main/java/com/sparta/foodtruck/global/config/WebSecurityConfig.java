@@ -87,18 +87,18 @@ public class WebSecurityConfig { // 이 개 같은거 설명좀 해주실 분 ?
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // CSRF 설정
-        http.csrf((csrf) -> csrf.disable());
+        http.csrf((csrf) -> csrf.disable()); // CSRF 보안 기능 비활성화 => 토큰을 요구하지 않고 요청 처리 가능
 
-        // 기본 설정인 Session 방식은 사용하지 않고 JWT 방식을 사용하기 위한 설정
+        // 기본 설정인 Session 방식은 사용하지 않고 JWT 방식을 사용하기 위한 설정 => 서버의 상태를 유지하지 않고 인증 수행
         http.sessionManagement((sessionManagement) ->
                 sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         );
 
-        http.authorizeHttpRequests((authorizeHttpRequests) ->
-                authorizeHttpRequests
-                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll() // resources 접근 허용 설정
+        http.authorizeHttpRequests((authorizeHttpRequests) -> // HTTP 요청에 대한 인가(Authorization) 설정 수행
+                authorizeHttpRequests // 여러 경로 및 규칙 지정 가능
+                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll() // resources 접근 허용 설정(정적 리소스에 대한 요청 모두 허용)
                         .requestMatchers("/api/user/**").permitAll() // '/api/users/'로 시작하는 요청 모두 접근 허가
-                        .requestMatchers(HttpMethod.GET, "/api/food/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/food/**").permitAll() // '/api/food/'로 시작하고 GET 메소드인 요청에 대해 모두 허용
                         .requestMatchers("/api/food/result/**").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/api/food/*/choice").permitAll()
@@ -107,7 +107,7 @@ public class WebSecurityConfig { // 이 개 같은거 설명좀 해주실 분 ?
                         .anyRequest().authenticated() // 그 외 모든 요청 인증처리
         );
 
-        http.formLogin(Customizer.withDefaults());
+        http.formLogin(Customizer.withDefaults()); // 기본적인 폼 로그인 기능을 사용, Customizer.withDefaults() : 기본 설정 사용
 
         // exceptionHandling 처리
         http.exceptionHandling((httpSecurityExceptionHandlingConfigurer) ->
